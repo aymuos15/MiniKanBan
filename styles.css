@@ -103,12 +103,22 @@ body {
 /* Mobile touch improvements */
 @media (max-width: 768px) {
     .task {
-        touch-action: none; /* Prevent default touch behaviors */
+        /* Allow normal touch behaviors for scrolling */
+        touch-action: pan-y pan-x; /* Allow panning in both directions for scrolling */
         user-select: none; /* Prevent text selection during drag */
+    }
+    
+    .task-list {
+        /* Ensure smooth scrolling on mobile */
+        -webkit-overflow-scrolling: touch;
+        overflow-y: auto;
+        overscroll-behavior: contain; /* Prevent rubber band effect */
     }
     
     .board {
         gap: 15px; /* Slightly smaller gap on mobile */
+        -webkit-overflow-scrolling: touch; /* Smooth horizontal scrolling */
+        overscroll-behavior-x: contain;
     }
     
     .column {
@@ -118,6 +128,20 @@ body {
     .drop-zone {
         border: 3px dashed #3498db; /* Thicker border for better visibility on mobile */
         background: rgba(52, 152, 219, 0.2);
+    }
+    
+    /* Improve touch targets */
+    .action-btn {
+        min-width: 28px;
+        min-height: 28px;
+        font-size: 14px;
+    }
+    
+    /* Better spacing for mobile */
+    .task {
+        margin-bottom: 12px;
+        padding: 14px;
+        padding-right: 65px;
     }
 }
 

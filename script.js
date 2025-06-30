@@ -69,11 +69,14 @@ function createTaskElement(task) {
     let touchStartY = 0;
     let isDragging = false;
     let touchOffset = { x: 0, y: 0 };
+    let dragTimeout = null;
+    let hasMoved = false;
 
     el.addEventListener('touchstart', (e) => {
         const touch = e.touches[0];
         touchStartX = touch.clientX;
         touchStartY = touch.clientY;
+        hasMoved = false;
         
         const rect = el.getBoundingClientRect();
         touchOffset.x = touch.clientX - rect.left;
@@ -84,8 +87,9 @@ function createTaskElement(task) {
             return;
         }
         
-        setTimeout(() => {
-            if (!isDragging) {
+        // Set a longer timeout to avoid interfering with scrolling
+        dragTimeout = setTimeout(() => {
+            if (!hasMoved && !isDragging) {
                 isDragging = true;
                 draggedEl = el;
                 el.classList.add('dragging');
@@ -93,15 +97,32 @@ function createTaskElement(task) {
                 el.style.zIndex = '1000';
                 el.style.pointerEvents = 'none';
                 el.style.width = rect.width + 'px';
+                
+                // Add haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
             }
-        }, 150); // Small delay to distinguish from tap
-    }, { passive: false });
+        }, 300); // Longer delay to allow scrolling
+    }, { passive: true });
 
     el.addEventListener('touchmove', (e) => {
-        if (!isDragging || !draggedEl) return;
-        
-        e.preventDefault();
         const touch = e.touches[0];
+        const moveX = Math.abs(touch.clientX - touchStartX);
+        const moveY = Math.abs(touch.clientY - touchStartY);
+        
+        // If user moved significantly, mark as moved
+        if (moveX > 10 || moveY > 10) {
+            hasMoved = true;
+        }
+        
+        // If we're not dragging yet, don't prevent default (allow scrolling)
+        if (!isDragging || !draggedEl) {
+            return;
+        }
+        
+        // Only prevent default once we're actually dragging
+        e.preventDefault();
         
         el.style.left = (touch.clientX - touchOffset.x) + 'px';
         el.style.top = (touch.clientY - touchOffset.y) + 'px';
@@ -120,8 +141,15 @@ function createTaskElement(task) {
     }, { passive: false });
 
     el.addEventListener('touchend', (e) => {
+        // Clear the drag timeout
+        if (dragTimeout) {
+            clearTimeout(dragTimeout);
+            dragTimeout = null;
+        }
+        
         if (!isDragging || !draggedEl) {
             isDragging = false;
+            hasMoved = false;
             return;
         }
         
@@ -147,6 +175,30 @@ function createTaskElement(task) {
         clearDropIndicators();
         draggedEl = null;
         isDragging = false;
+        hasMoved = false;
+    });
+
+    el.addEventListener('touchcancel', (e) => {
+        // Clean up if touch is cancelled
+        if (dragTimeout) {
+            clearTimeout(dragTimeout);
+            dragTimeout = null;
+        }
+        
+        if (isDragging && draggedEl) {
+            el.style.position = '';
+            el.style.zIndex = '';
+            el.style.pointerEvents = '';
+            el.style.width = '';
+            el.style.left = '';
+            el.style.top = '';
+            el.classList.remove('dragging');
+            clearDropIndicators();
+        }
+        
+        draggedEl = null;
+        isDragging = false;
+        hasMoved = false;
     });
 
     // action buttons
