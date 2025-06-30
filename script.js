@@ -60,9 +60,94 @@ function createTaskElement(task) {
         ${task.collab ? `<div class="task-collab">With: ${task.collab}</div>` : ''}
     `;
 
-    // drag events
+    // Desktop drag events
     el.addEventListener('dragstart', () => { draggedEl = el; el.classList.add('dragging'); });
     el.addEventListener('dragend', () => { draggedEl = null; el.classList.remove('dragging'); clearDropIndicators(); });
+
+    // Mobile touch events
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isDragging = false;
+    let touchOffset = { x: 0, y: 0 };
+
+    el.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        
+        const rect = el.getBoundingClientRect();
+        touchOffset.x = touch.clientX - rect.left;
+        touchOffset.y = touch.clientY - rect.top;
+        
+        // Don't start drag if touching action buttons
+        if (e.target.closest('.card-actions')) {
+            return;
+        }
+        
+        setTimeout(() => {
+            if (!isDragging) {
+                isDragging = true;
+                draggedEl = el;
+                el.classList.add('dragging');
+                el.style.position = 'fixed';
+                el.style.zIndex = '1000';
+                el.style.pointerEvents = 'none';
+                el.style.width = rect.width + 'px';
+            }
+        }, 150); // Small delay to distinguish from tap
+    }, { passive: false });
+
+    el.addEventListener('touchmove', (e) => {
+        if (!isDragging || !draggedEl) return;
+        
+        e.preventDefault();
+        const touch = e.touches[0];
+        
+        el.style.left = (touch.clientX - touchOffset.x) + 'px';
+        el.style.top = (touch.clientY - touchOffset.y) + 'px';
+        
+        // Find element under touch point
+        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        const taskList = elementBelow?.closest('.task-list');
+        
+        // Clear all drop zones first
+        clearDropIndicators();
+        
+        // Add drop zone to current target
+        if (taskList) {
+            taskList.classList.add('drop-zone');
+        }
+    }, { passive: false });
+
+    el.addEventListener('touchend', (e) => {
+        if (!isDragging || !draggedEl) {
+            isDragging = false;
+            return;
+        }
+        
+        const touch = e.changedTouches[0];
+        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetTaskList = elementBelow?.closest('.task-list');
+        
+        // Reset element styles
+        el.style.position = '';
+        el.style.zIndex = '';
+        el.style.pointerEvents = '';
+        el.style.width = '';
+        el.style.left = '';
+        el.style.top = '';
+        el.classList.remove('dragging');
+        
+        // Move to target list if valid
+        if (targetTaskList && targetTaskList !== el.parentElement) {
+            targetTaskList.appendChild(el);
+            saveTasksToStorage();
+        }
+        
+        clearDropIndicators();
+        draggedEl = null;
+        isDragging = false;
+    });
 
     // action buttons
     el.querySelector('.delete-btn').addEventListener('click', () => {
