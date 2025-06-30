@@ -1,0 +1,2 @@
+- [x] 1. Add sorting options in some form if required
+- [ ] 2. A potential ui study to understand what is the best way to go about this.
