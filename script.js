@@ -3,13 +3,43 @@ let draggedEl = null;
 let currentColumn = 'pending';
 let editingEl = null;
 
-// ==== Sample Data (for demo) ====
+// ==== Local Storage Key ====
+const STORAGE_KEY = 'todoapp_tasks';
+
+// ==== Sample Data (for demo - only used if no saved data exists) ====
 const sampleTasks = [
     { id: 1, title: 'Review project proposal', description: 'Check the latest version and provide feedback', due: '2024-07-05', collab: 'John D.', column: 'pending' },
     { id: 2, title: 'Fix critical bug', description: 'DB connection timeout issue', due: '2024-07-02', collab: 'Sarah M.', column: 'urgent' },
     { id: 3, title: 'Update documentation', description: 'Add new API endpoints to docs', due: '2024-07-10', collab: 'Alex K.', column: 'ongoing' },
     { id: 4, title: 'Deploy to staging', description: 'Test new features before production', due: '2024-07-03', collab: '', column: 'nearfinish' }
 ];
+
+// ==== Local Storage Functions ====
+function saveTasksToStorage() {
+    const tasks = [];
+    document.querySelectorAll('.task').forEach(taskEl => {
+        const task = {
+            id: taskEl.dataset.id,
+            title: taskEl.querySelector('.task-title').textContent,
+            description: taskEl.querySelector('.task-description').textContent,
+            due: taskEl.querySelector('.task-due').textContent.replace('Due: ', ''),
+            collab: taskEl.querySelector('.task-collab')?.textContent.replace('With: ', '') || '',
+            column: taskEl.parentElement.dataset.column
+        };
+        tasks.push(task);
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+}
+
+function loadTasksFromStorage() {
+    try {
+        const savedTasks = localStorage.getItem(STORAGE_KEY);
+        return savedTasks ? JSON.parse(savedTasks) : sampleTasks;
+    } catch (error) {
+        console.error('Error loading tasks from storage:', error);
+        return sampleTasks;
+    }
+}
 
 // ==== Helpers ====
 function createTaskElement(task) {
@@ -35,7 +65,10 @@ function createTaskElement(task) {
     el.addEventListener('dragend', () => { draggedEl = null; el.classList.remove('dragging'); clearDropIndicators(); });
 
     // action buttons
-    el.querySelector('.delete-btn').addEventListener('click', () => el.remove());
+    el.querySelector('.delete-btn').addEventListener('click', () => {
+        el.remove();
+        saveTasksToStorage(); // Save after deletion
+    });
     el.querySelector('.edit-btn').addEventListener('click', () => startEdit(el));
     return el;
 }
@@ -52,7 +85,10 @@ function enableDropZones() {
         zone.addEventListener('dragleave', function (e) { if (!this.contains(e.relatedTarget)) this.classList.remove('drop-zone'); });
         zone.addEventListener('drop', function (e) {
             e.preventDefault();
-            if (draggedEl) this.appendChild(draggedEl);
+            if (draggedEl) {
+                this.appendChild(draggedEl);
+                saveTasksToStorage(); // Save after drag and drop
+            }
             clearDropIndicators();
         });
     });
@@ -95,11 +131,13 @@ function addOrUpdateTask() {
                 const c = document.createElement('div'); c.className='task-collab'; c.textContent='With: '+collab; editingEl.appendChild(c);
             }
         } else if (collabEl) collabEl.remove();
+        saveTasksToStorage(); // Save after editing
     } else {
         // Create new
         const obj = { id: Date.now(), title, description, due, collab, column: currentColumn };
         const el = createTaskElement(obj);
         document.querySelector(`[data-column="${currentColumn}"]`).appendChild(el);
+        saveTasksToStorage(); // Save after creating new task
     }
     closeModal();
     sortTasks();
@@ -137,6 +175,44 @@ function sortTasks() {
     });
 }
 
+function clearAllTasks() {
+    console.log('Clear all tasks button clicked');
+    
+    if (confirm('Are you sure you want to clear all tasks? This action cannot be undone.')) {
+        console.log('User confirmed clear all tasks');
+        
+        // Method 1: Clear all task-list containers
+        const taskLists = document.querySelectorAll('.task-list');
+        console.log(`Found ${taskLists.length} task lists`);
+        taskLists.forEach(taskList => {
+            const tasksInList = taskList.querySelectorAll('.task');
+            console.log(`Clearing ${tasksInList.length} tasks from list`);
+            taskList.innerHTML = '';
+        });
+        
+        // Method 2: Remove any remaining task elements (backup)
+        const remainingTasks = document.querySelectorAll('.task');
+        console.log(`Found ${remainingTasks.length} remaining tasks to remove`);
+        remainingTasks.forEach(task => task.remove());
+        
+        // Clear localStorage
+        localStorage.removeItem(STORAGE_KEY);
+        console.log('localStorage cleared');
+        
+        // Verify all tasks are gone
+        const finalCheck = document.querySelectorAll('.task');
+        console.log(`Final check: ${finalCheck.length} tasks remaining`);
+        
+        if (finalCheck.length === 0) {
+            console.log('All tasks cleared successfully!');
+        } else {
+            console.error('Some tasks may still remain');
+        }
+    } else {
+        console.log('User cancelled clear all tasks');
+    }
+}
+
 // ==== Event Handlers ====
 // Close modal when clicking outside
 window.onclick = function(event) {
@@ -155,14 +231,26 @@ document.addEventListener('keydown', function(event) {
 
 // ==== Init ====
 function init() {
-    // sample tasks
-    sampleTasks.forEach(t => {
+    // Load tasks from storage (or use sample tasks if none exist)
+    const tasksToLoad = loadTasksFromStorage();
+    tasksToLoad.forEach(t => {
         const el = createTaskElement(t);
         document.querySelector(`[data-column="${t.column}"]`).appendChild(el);
     });
+    
     enableDropZones();
     document.getElementById('searchInput').addEventListener('input', handleSearch);
     document.getElementById('sortBtn').addEventListener('click', sortTasks);
+    
+    // Clear button event listener with extra safety
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearAllTasks);
+        console.log('Clear button event listener attached successfully');
+    } else {
+        console.error('Clear button not found!');
+    }
+    
     document.querySelector('.add-task') && document.querySelectorAll('.add-task').forEach(btn => btn.addEventListener('click', e => openModal(e.target.closest('.column').querySelector('.task-list').dataset.column)));
     document.getElementById('taskModal').addEventListener('click', e => { if(e.target.id==='taskModal') closeModal(); });
     document.getElementById('saveTaskBtn').addEventListener('click', addOrUpdateTask);
