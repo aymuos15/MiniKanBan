@@ -31,15 +31,23 @@
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
         }
 
         .column h2 {
             font-size: 16px;
-            margin-bottom: 15px;
+            margin: 0 0 15px 0;
             color: #333;
             text-align: center;
-            padding-bottom: 10px;
+            padding: 0 0 10px 0;
             border-bottom: 2px solid #eee;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 1;
+            padding-top: 5px;
         }
 
         .pending h2 { border-bottom-color: #3498db; }
@@ -49,9 +57,32 @@
         .done h2 { border-bottom-color: #27ae60; }
 
         .task-list {
+            flex: 1;
             min-height: 300px;
-            min-height: 100%;
+            overflow-y: auto;
+            padding-right: 5px;
             transition: background-color 0.2s;
+            scrollbar-width: thin;
+            scrollbar-color: #ccc transparent;
+        }
+        
+        /* Custom scrollbar for WebKit browsers */
+        .task-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .task-list::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 3px;
+        }
+        
+        .task-list::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 3px;
+        }
+        
+        .task-list::-webkit-scrollbar-thumb:hover {
+            background-color: #aaa;
         }
 
         .task {
