@@ -50,6 +50,8 @@
 
         .task-list {
             min-height: 300px;
+            min-height: 100%;
+            transition: background-color 0.2s;
         }
 
         .task {
@@ -114,7 +116,14 @@
 
         .drop-zone {
             border: 2px dashed #3498db;
-            background: #f0f8ff;
+            background: rgba(52, 152, 219, 0.1);
+            transition: all 0.2s;
+        }
+        
+        .column.drop-zone .task-list {
+            min-height: 50px;
+            padding: 10px;
+            background: rgba(52, 152, 219, 0.05);
         }
 
         .modal {
@@ -269,6 +278,15 @@
         }
 
         function setupDropZones() {
+            // Make columns drop zones
+            document.querySelectorAll('.column').forEach(column => {
+                column.addEventListener('dragover', handleDragOver);
+                column.addEventListener('drop', handleDrop);
+                column.addEventListener('dragenter', handleDragEnter);
+                column.addEventListener('dragleave', handleDragLeave);
+            });
+            
+            // Also keep task lists as drop zones for better UX
             document.querySelectorAll('.task-list').forEach(taskList => {
                 taskList.addEventListener('dragover', handleDragOver);
                 taskList.addEventListener('drop', handleDrop);
@@ -295,10 +313,22 @@
 
         function handleDrop(e) {
             e.preventDefault();
-            this.classList.remove('drop-zone');
+            e.stopPropagation();
+            
+            // Remove drop zone styling from all columns and task lists
+            document.querySelectorAll('.column, .task-list').forEach(el => {
+                el.classList.remove('drop-zone');
+            });
             
             if (draggedElement) {
-                this.appendChild(draggedElement);
+                // Find the task list in the column if we're dropping on the column
+                const targetList = this.classList.contains('task-list') 
+                    ? this 
+                    : this.querySelector('.task-list');
+                
+                if (targetList) {
+                    targetList.appendChild(draggedElement);
+                }
             }
         }
 
